@@ -127,7 +127,7 @@ namespace InputPattern
 
         private void InsertDataIntoDatabase(List<PatWantedDeadOrAWildHacksaw> records)
         {
-            string connectionString = "Your SQL Server Connection String Here";
+            string connectionString = "Server=localhost;Database=Slot_Hacksaw;persist security info=True;MultipleActiveResultSets=True;User ID=sa;Password=sqlpassword123!@#;TrustServerCertificate=True";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
