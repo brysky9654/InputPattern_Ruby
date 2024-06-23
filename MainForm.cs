@@ -70,7 +70,8 @@ namespace InputPattern
                     int totalWin = GetTotalWin(request, response);
                     int win = totalWin;
                     int totalBet = int.Parse(request.bets[0].betAmount);
-                    int rtp = totalWin / totalBet * 100;
+                    double rtpDouble = ((double)totalWin / totalBet) * 100;
+                    int rtp = (int)rtpDouble;
 
                     var record = new PatWantedDeadOrAWildHacksaw
                     {
@@ -153,7 +154,7 @@ namespace InputPattern
                     int id = GetLastId(connectionString);
 
                     string query = $@"
-                        INSERT INTO pattern.pat_wanted_dead_or_a_wild_hacksaw
+                        INSERT INTO pattern.pat_{record.gameName.ToLower()}_hacksaw 
                         (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
                         (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
