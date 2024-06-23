@@ -54,7 +54,6 @@ namespace InputPattern
             int index = 0;
             foreach (var entry in jsonEntries)
             {
-
                 var parsedEntry = JsonConvert.DeserializeObject<Dictionary<string, string>>(entry);
                 if (parsedEntry != null)
                 {
@@ -62,30 +61,37 @@ namespace InputPattern
                     var response = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
 
                     string gameCode = fileName.Split('.')[0];
+                    string gameName = fileName.Split('.')[1];
                     string pType = GetPType(request, response);
-                    string type = request.bets.ElementAt<Bet>(0).buyBonus != null ? "free" : "base";
+                    string type = request.bets[0].buyBonus != null ? "free" : "base";
                     byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
                     int big = ++index;
                     int small = 1;
-                    int totalWin = GetTotalWin(response);
+                    int totalWin = GetTotalWin(request, response);
+                    int win = totalWin;
+                    int totalBet = int.Parse(request.bets[0].betAmount);
+                    int rtp = totalWin / totalBet * 100;
 
                     var record = new PatWantedDeadOrAWildHacksaw
                     {
                         // Populate the properties based on the parsed JSON
-                        GameCode = gameCode,
-                        PType = pType,
-                        Type = type,
-                        GameDone = gameDone,
-                        Idx = "",
-                        Big = big,
-                        Small = small,
-                        //Win = response.accountBalance.balance,
-                        //TotalWin = Convert.ToDouble(response.accountBalance.balance),
-                        //TotalBet = request.bets[0].betAmount,
-                        Balance = response.accountBalance.balance,
-                        //Pattern = response.round.events[0].c.grid,
-                        //CreatedAt = DateTime.UtcNow,
-                        //UpdatedAt = DateTime.UtcNow
+                        gameCode = gameCode,
+                        gameName = gameName,
+                        pType = pType,
+                        type = type,
+                        gameDone = gameDone,
+                        idx = "",
+                        big = big,
+                        small = small,
+                        win = win,
+                        totalWin = totalWin,
+                        totalBet = totalBet,
+                        virtualBet = totalBet,
+                        rtp = rtp,
+                        balance = response.accountBalance.balance,
+                        pattern = JsonConvert.SerializeObject(response.round),
+                        createdAt = response.serverTime,
+                        updatedAt = response.serverTime
                     };
 
                     records.Add(record);
@@ -103,9 +109,9 @@ namespace InputPattern
                 return null;
             }
 
-            if (request.bets.ElementAt<Bet>(0).buyBonus != null)
+            if (request.bets[0].buyBonus != null)
             {
-                pType = request.bets.ElementAt<Bet>(0).buyBonus.ToString();
+                pType = request.bets[0].buyBonus.ToString();
             }
             else if (response.round.status == "completed")
             {
@@ -118,10 +124,19 @@ namespace InputPattern
             return pType;
         }
 
-        private int GetTotalWin(Response response)
+        private int GetTotalWin(Request request, Response response)
         {
             int totalWin = 0;
-            
+
+            if (request.bets.ElementAt<Bet>(0).buyBonus != null)
+            {
+                totalWin = int.Parse(response.round.events.Last<Event>().awa);
+            }
+            else
+            {
+                totalWin = int.Parse(response.round.events.First<Event>().awa);
+            };
+
             return totalWin;
         }
 
@@ -135,30 +150,61 @@ namespace InputPattern
 
                 foreach (var record in records)
                 {
-                    string query = @"
-                        INSERT INTO PatWantedDeadOrAWildHacksaw
-                        (GameCode, PType, Type, GameDone, Win, TotalWin, TotalBet, Balance, Pattern, CreatedAt, UpdatedAt)
+                    int id = GetLastId(connectionString);
+
+                    string query = $@"
+                        INSERT INTO pattern.pat_wanted_dead_or_a_wild_hacksaw
+                        (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
-                        (@GameCode, @PType, @Type, @GameDone, @Win, @TotalWin, @TotalBet, @Balance, @Pattern, @CreatedAt, @UpdatedAt)";
+                        (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
+                    //string query = $@"
+                    //    INSERT INTO {"pat_" + record.GameName.ToLower() + "_hacksaw"}
+                    //    (GameCode, PType, Type, GameDone, Win, TotalWin, TotalBet, Balance, Pattern, CreatedAt, UpdatedAt)
+                    //    VALUES
+                    //    (@GameCode, @PType, @Type, @GameDone, @Win, @TotalWin, @TotalBet, @Balance, @Pattern, @CreatedAt, @UpdatedAt)";
 
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
-                        command.Parameters.AddWithValue("@GameCode", record.GameCode ?? (object)DBNull.Value);
-                        command.Parameters.AddWithValue("@PType", record.PType);
-                        command.Parameters.AddWithValue("@Type", record.Type);
-                        command.Parameters.AddWithValue("@GameDone", record.GameDone);
-                        command.Parameters.AddWithValue("@Win", record.Win);
-                        command.Parameters.AddWithValue("@TotalWin", record.TotalWin);
-                        command.Parameters.AddWithValue("@TotalBet", record.TotalBet);
-                        command.Parameters.AddWithValue("@Balance", record.Balance ?? (object)DBNull.Value);
-                        command.Parameters.AddWithValue("@Pattern", record.Pattern ?? (object)DBNull.Value);
-                        command.Parameters.AddWithValue("@CreatedAt", record.CreatedAt);
-                        command.Parameters.AddWithValue("@UpdatedAt", record.UpdatedAt);
+                        command.Parameters.AddWithValue("@id", ++id);
+                        command.Parameters.AddWithValue("@gameCode", record.gameCode ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@pType", record.pType);
+                        command.Parameters.AddWithValue("@type", record.type);
+                        command.Parameters.AddWithValue("@gameDone", record.gameDone);
+                        command.Parameters.AddWithValue("@idx", record.idx);
+                        command.Parameters.AddWithValue("@big", record.big);
+                        command.Parameters.AddWithValue("@small", record.small);
+                        command.Parameters.AddWithValue("@win", record.win);
+                        command.Parameters.AddWithValue("@totalWin", record.totalWin);
+                        command.Parameters.AddWithValue("@totalBet", record.totalBet);
+                        command.Parameters.AddWithValue("@virtualBet", record.virtualBet);
+                        command.Parameters.AddWithValue("@rtp", record.rtp);
+                        command.Parameters.AddWithValue("@balance", record.balance ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@pattern", record.pattern ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@createdAt", record.createdAt);
+                        command.Parameters.AddWithValue("@updatedAt", record.updatedAt);
 
                         command.ExecuteNonQuery();
                     }
                 }
             }
+        }
+
+        private int GetLastId(string connectionString)
+        {
+            int lastId = 0;
+            string query = "SELECT ISNULL(MAX(id), 0) FROM pattern.pat_wanted_dead_or_a_wild_hacksaw";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    lastId = (int)command.ExecuteScalar();
+                }
+            }
+
+            return lastId;
         }
     }
 
@@ -249,22 +295,23 @@ namespace InputPattern
 
     public class PatWantedDeadOrAWildHacksaw
     {
-        public int Id { get; set; }
-        public string GameCode { get; set; }
-        public string PType { get; set; }
-        public string Type { get; set; }
-        public byte GameDone { get; set; }
-        public string Idx { get; set; }
-        public int Big { get; set; }
-        public int Small { get; set; }
-        public int Win { get; set; }
-        public int TotalWin { get; set; }
-        public int TotalBet { get; set; }
-        public int VirtualBet { get; set; }
-        public int Rtp { get; set; }
-        public string Balance { get; set; }
-        public string Pattern { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public int id { get; set; }
+        public string gameCode { get; set; }
+        public string gameName { get; set; }
+        public string pType { get; set; }
+        public string type { get; set; }
+        public byte gameDone { get; set; }
+        public string idx { get; set; }
+        public int big { get; set; }
+        public int small { get; set; }
+        public int win { get; set; }
+        public int totalWin { get; set; }
+        public int totalBet { get; set; }
+        public int virtualBet { get; set; }
+        public int rtp { get; set; }
+        public string balance { get; set; }
+        public string pattern { get; set; }
+        public DateTime createdAt { get; set; }
+        public DateTime updatedAt { get; set; }
     }
 }
