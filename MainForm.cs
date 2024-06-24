@@ -8,6 +8,7 @@ using System.Diagnostics;
 using InputPattern.Models;
 using Azure.Identity;
 using System.IO;
+using Microsoft.Web.WebView2.Core;
 
 namespace InputPattern
 {
@@ -68,10 +69,19 @@ namespace InputPattern
         {
             var records = new List<PatWantedDeadOrAWildHacksaw>();
             var jsonEntries = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var parsedEntry = new Dictionary<string, string>();
 
             foreach (var entry in jsonEntries)
             {
-                var parsedEntry = JsonConvert.DeserializeObject<Dictionary<string, string>>(entry);
+                try
+                {
+                    parsedEntry = JsonConvert.DeserializeObject<Dictionary<string, string>>(entry);
+                }
+                catch (Exception e)
+                {
+                    continue;
+                }
+                
                 if (parsedEntry != null)
                 {
                     var request = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
