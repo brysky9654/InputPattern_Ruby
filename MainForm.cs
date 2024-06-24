@@ -12,6 +12,9 @@ namespace InputPattern
     {
         private List<string> filePaths;
         private List<string> fileNames;
+        private string baseDirectory;
+
+        private string connectionString = "Server=localhost;Database=Slot_Hacksaw;persist security info=True;MultipleActiveResultSets=True;User ID=sa;Password=sqlpassword123!@#;TrustServerCertificate=True";
 
         public MainForm()
         {
@@ -29,6 +32,7 @@ namespace InputPattern
                     filePaths = openFileDialog.FileNames.ToList();
                     fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
                     FileTextBox.Text = string.Join(", ", fileNames);
+                    baseDirectory = Path.GetDirectoryName(filePaths[0]);
                 }
             }
         }
@@ -143,7 +147,17 @@ namespace InputPattern
 
         private void InsertDataIntoDatabase(List<PatWantedDeadOrAWildHacksaw> records)
         {
-            string connectionString = "Server=localhost;Database=Slot_Hacksaw;persist security info=True;MultipleActiveResultSets=True;User ID=sa;Password=sqlpassword123!@#;TrustServerCertificate=True";
+            string hashCodesFilePath = Path.Combine(baseDirectory, @$"..\..\HashCodes\{record.Split('.')[1]}");
+            // Check and generate initial hash code file if necessary
+            if (!File.Exists(hashCodesFilePath))
+            {
+                GenerateInitialHashCodeFile(records[0]);
+            }
+
+            // Load existing hash codes from file
+            var existingHashCodes = File.ReadAllLines(hashCodesFilePath)
+                                        .Select(line => line.Split(':'))
+                                        .ToDictionary(parts => parts[0], parts => parts[1]);
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -153,6 +167,15 @@ namespace InputPattern
                 {
                     int id = GetLastId(record, connectionString);
                     int lastBig = GetLastBig(record, connectionString);
+
+                    string eventHashCode = CalculateEventHashCodeFromPattern(record.pattern);
+
+                    // Check if hash code already exists in the hash codes file
+                    if (IsEventHashCodeAlreadyExists(eventHashCode, hashCodesFilePath))
+                    {
+                        // Skip insertion if record with same eventHashCode exists
+                        continue;
+                    }
 
                     string query = $@"
                         INSERT INTO pattern.pat_{record.gameName.ToLower()}_hacksaw 
@@ -182,7 +205,87 @@ namespace InputPattern
 
                         command.ExecuteNonQuery();
                     }
+
+                    UpdateHashCodesFile(record.createdAt.ToString(), eventHashCode, hashCodesFilePath);
                 }
+            }
+        }
+
+        private void GenerateInitialHashCodeFile(PatWantedDeadOrAWildHacksaw record)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // Query to fetch existing hash codes from database
+                string query = $"SELECT createdAt, pattern FROM pattern.pat_{record.gameName.ToLower()}_hacksaw";
+                Dictionary<string, string> existingHashCodes = new Dictionary<string, string>();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string time = reader["createdAt"].ToString();
+                            string pattern = reader["pattern"].ToString();
+
+                            // Calculate hash code for the pattern field (you can adjust this logic)
+                            string eventHashCode = CalculateEventHashCodeFromPattern(pattern);
+
+                            // Store hash code in dictionary
+                            existingHashCodes[time] = eventHashCode;
+                        }
+                    }
+                }
+
+                // Save hash codes to file
+                SaveHashCodesToFile(existingHashCodes, hashCodesFilePath);
+            }
+        }
+
+        private string CalculateEventHashCodeFromPattern(string pattern)
+        {
+            // Example hash code calculation logic (adjust as per your requirements)
+            return pattern.GetHashCode().ToString();
+        }
+
+        private void SaveHashCodesToFile(Dictionary<string, string> hashCodes, string filePath)
+        {
+            // Save hash codes to a text file
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                foreach (var kvp in hashCodes)
+                {
+                    writer.WriteLine($"{kvp.Key}:{kvp.Value}");
+                }
+            }
+        }
+
+        private bool IsEventHashCodeAlreadyExists(string eventHashCode, string hashCodesFilePath)
+        {
+            // Check if the given hash code exists in the hash codes file
+            if (!File.Exists(hashCodesFilePath))
+            {
+                // If hash codes file doesn't exist, create it and return false
+                return false;
+            }
+
+            // Read existing hash codes from file
+            var existingHashCodes = File.ReadAllLines(hashCodesFilePath)
+                                        .Select(line => line.Split(':'))
+                                        .ToDictionary(parts => parts[0], parts => parts[1]);
+
+            // Check if eventHashCode exists in the dictionary
+            return existingHashCodes.ContainsValue(eventHashCode);
+        }
+
+        private void UpdateHashCodesFile(string time, string eventHashCode, string hashCodesFilePath)
+        {
+            // Append new hash code to the existing hash codes file
+            using (StreamWriter writer = File.AppendText(hashCodesFilePath))
+            {
+                writer.WriteLine($"{time}:{eventHashCode}");
             }
         }
 
@@ -223,6 +326,7 @@ namespace InputPattern
         }
     }
 
+    #region Models
     public class Request
     {
         public bool autoplay { get; set; }
@@ -329,4 +433,5 @@ namespace InputPattern
         public DateTime createdAt { get; set; }
         public DateTime updatedAt { get; set; }
     }
+    #endregion
 }
