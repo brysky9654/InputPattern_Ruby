@@ -4,13 +4,14 @@ using InputPattern.Database;
 using Newtonsoft.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System.Diagnostics;
 
 namespace InputPattern
 {
     public partial class MainForm : Form
     {
-        private string filePath;
-        private string fileName;
+        private List<string> filePaths;
+        private List<string> fileNames;
 
         public MainForm()
         {
@@ -22,36 +23,39 @@ namespace InputPattern
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Filter = "Data files (*.data)|*.data|All files (*.*)|*.*";
+                openFileDialog.Multiselect = true;
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    filePath = openFileDialog.FileName;
-                    fileName = System.IO.Path.GetFileName(filePath);
-                    FileTextBox.Text = filePath;
+                    filePaths = openFileDialog.FileNames.ToList();
+                    fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
+                    FileTextBox.Text = string.Join(", ", fileNames);
                 }
             }
         }
 
         private void btn_Start_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(filePath))
+            if (filePaths != null && filePaths.Count > 0)
             {
-                string fileContent = File.ReadAllText(filePath);
-                List<PatWantedDeadOrAWildHacksaw> records = ParseData(fileContent);
-                InsertDataIntoDatabase(records);
+                foreach (var filePath in filePaths)
+                {
+                    string fileContent = File.ReadAllText(filePath);
+                    List<PatWantedDeadOrAWildHacksaw> records = ParseData(fileContent, System.IO.Path.GetFileName(filePath));
+                    InsertDataIntoDatabase(records);
+                }
                 MessageBox.Show("Data inserted successfully!");
             }
             else
             {
-                MessageBox.Show("Please select a file first.");
+                MessageBox.Show("Please select files first.");
             }
         }
 
-        private List<PatWantedDeadOrAWildHacksaw> ParseData(string data)
+        private List<PatWantedDeadOrAWildHacksaw> ParseData(string data, string fileName)
         {
             var records = new List<PatWantedDeadOrAWildHacksaw>();
             var jsonEntries = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
-            int index = 0;
             foreach (var entry in jsonEntries)
             {
                 var parsedEntry = JsonConvert.DeserializeObject<Dictionary<string, string>>(entry);
@@ -65,8 +69,6 @@ namespace InputPattern
                     string pType = GetPType(request, response);
                     string type = request.bets[0].buyBonus != null ? "free" : "base";
                     byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
-                    int big = ++index;
-                    int small = 1;
                     int totalWin = GetTotalWin(request, response);
                     int win = totalWin;
                     int totalBet = int.Parse(request.bets[0].betAmount);
@@ -75,21 +77,19 @@ namespace InputPattern
 
                     var record = new PatWantedDeadOrAWildHacksaw
                     {
-                        // Populate the properties based on the parsed JSON
                         gameCode = gameCode,
                         gameName = gameName,
                         pType = pType,
                         type = type,
                         gameDone = gameDone,
                         idx = "",
-                        big = big,
-                        small = small,
+                        small = 1,
                         win = win,
                         totalWin = totalWin,
                         totalBet = totalBet,
                         virtualBet = totalBet,
                         rtp = rtp,
-                        balance = response.accountBalance.balance,
+                        balance = int.Parse(response.accountBalance.balance),
                         pattern = JsonConvert.SerializeObject(response.round),
                         createdAt = response.serverTime,
                         updatedAt = response.serverTime
@@ -151,19 +151,15 @@ namespace InputPattern
 
                 foreach (var record in records)
                 {
-                    int id = GetLastId(connectionString);
+                    int id = GetLastId(record, connectionString);
+                    int lastBig = GetLastBig(record, connectionString);
 
                     string query = $@"
                         INSERT INTO pattern.pat_{record.gameName.ToLower()}_hacksaw 
                         (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
                         (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
-                    //string query = $@"
-                    //    INSERT INTO {"pat_" + record.GameName.ToLower() + "_hacksaw"}
-                    //    (GameCode, PType, Type, GameDone, Win, TotalWin, TotalBet, Balance, Pattern, CreatedAt, UpdatedAt)
-                    //    VALUES
-                    //    (@GameCode, @PType, @Type, @GameDone, @Win, @TotalWin, @TotalBet, @Balance, @Pattern, @CreatedAt, @UpdatedAt)";
-
+                    
                     using (SqlCommand command = new SqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@id", ++id);
@@ -172,7 +168,7 @@ namespace InputPattern
                         command.Parameters.AddWithValue("@type", record.type);
                         command.Parameters.AddWithValue("@gameDone", record.gameDone);
                         command.Parameters.AddWithValue("@idx", record.idx);
-                        command.Parameters.AddWithValue("@big", record.big);
+                        command.Parameters.AddWithValue("@big", ++lastBig);
                         command.Parameters.AddWithValue("@small", record.small);
                         command.Parameters.AddWithValue("@win", record.win);
                         command.Parameters.AddWithValue("@totalWin", record.totalWin);
@@ -190,10 +186,10 @@ namespace InputPattern
             }
         }
 
-        private int GetLastId(string connectionString)
+        private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastId = 0;
-            string query = "SELECT ISNULL(MAX(id), 0) FROM pattern.pat_wanted_dead_or_a_wild_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower()}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -206,6 +202,24 @@ namespace InputPattern
             }
 
             return lastId;
+        }
+
+        private int GetLastBig(PatWantedDeadOrAWildHacksaw record, string connectionString)
+        {
+            int lastBig = 0;
+            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower()}_hacksaw";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    lastBig = (int)command.ExecuteScalar();
+                }
+            }
+
+            return lastBig;
         }
     }
 
@@ -310,7 +324,7 @@ namespace InputPattern
         public int totalBet { get; set; }
         public int virtualBet { get; set; }
         public int rtp { get; set; }
-        public string balance { get; set; }
+        public int? balance { get; set; }
         public string pattern { get; set; }
         public DateTime createdAt { get; set; }
         public DateTime updatedAt { get; set; }
