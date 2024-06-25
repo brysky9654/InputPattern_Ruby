@@ -263,7 +263,7 @@ namespace InputPattern
         private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -281,7 +281,7 @@ namespace InputPattern
         private int GetLastBig(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastBig = 0;
-            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
