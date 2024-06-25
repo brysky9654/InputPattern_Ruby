@@ -87,7 +87,7 @@ namespace InputPattern
                     var request = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
                     var response = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
 
-                    if (response.round == null)
+                    if (response.accountBalance.balance == null)
                     {
                         continue;
                     }
