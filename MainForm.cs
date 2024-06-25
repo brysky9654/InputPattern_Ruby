@@ -138,7 +138,7 @@ namespace InputPattern
 
                 if (isFirstInsert)
                 {
-                    string getPatternsQuery = $"SELECT pattern FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "")}_hacksaw";
+                    string getPatternsQuery = $"SELECT pattern FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
 
                     using (SqlCommand command = new SqlCommand(getPatternsQuery, connection))
                     {
