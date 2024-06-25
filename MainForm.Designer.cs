@@ -35,10 +35,12 @@
             // 
             // FileTextBox
             // 
+            FileTextBox.Enabled = false;
             FileTextBox.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 0);
             FileTextBox.Location = new Point(40, 30);
             FileTextBox.Multiline = true;
             FileTextBox.Name = "FileTextBox";
+            FileTextBox.ScrollBars = ScrollBars.Both;
             FileTextBox.Size = new Size(300, 350);
             FileTextBox.TabIndex = 0;
             // 

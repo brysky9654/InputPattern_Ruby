@@ -40,7 +40,7 @@ namespace InputPattern
                 {
                     filePaths = openFileDialog.FileNames.ToList();
                     fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
-                    FileTextBox.Text = string.Join(", ", fileNames);
+                    FileTextBox.Text = string.Join("\r\n", fileNames);
                     string baseDirectory = Path.GetDirectoryName(filePaths[0]);
                     hashCodesFilePath = Path.Combine(baseDirectory, @"..\..\HashCode") + "\\hashCodes.hc";   
                 }
