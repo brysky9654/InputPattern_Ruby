@@ -174,7 +174,7 @@ namespace InputPattern
                     }
 
                     string query = $@"
-                        INSERT INTO pattern.pat_{record.gameName.ToLower()}_hacksaw 
+                        INSERT INTO pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw 
                         (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
                         (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
@@ -263,7 +263,7 @@ namespace InputPattern
         private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower()}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -281,7 +281,7 @@ namespace InputPattern
         private int GetLastBig(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastBig = 0;
-            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower()}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
