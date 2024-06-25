@@ -159,7 +159,6 @@ namespace InputPattern
                 {
                     int id = GetLastId(record, connectionString);
                     int lastBig = GetLastBig(record, connectionString);
-
                     string eventHashCode = CalculateEventHashCodeFromPattern(record.pattern);
 
                     // Check if hash code already exists in the hash codes file
