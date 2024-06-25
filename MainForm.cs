@@ -87,6 +87,11 @@ namespace InputPattern
                     var request = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
                     var response = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
 
+                    if (response.round == null)
+                    {
+                        continue;
+                    }
+
                     string gameCode = fileName.Split('.')[0];
                     string gameName = fileName.Split('.')[1];
                     string pType = GetPType(request, response);
@@ -206,24 +211,31 @@ namespace InputPattern
         private string GetPType(Request request, Response response)
         {
             string pType = "";
-            if (response == null)
+            try
             {
-                return null;
-            }
+                if (response.round == null)
+                {
+                    return "";
+                }
 
-            if (request.bets[0].buyBonus != null)
-            {
-                pType = request.bets[0].buyBonus.ToString();
+                if (request.bets[0].buyBonus != null)
+                {
+                    pType = request.bets[0].buyBonus.ToString();
+                }
+                else if (response.round.status == "completed")
+                {
+                    pType = "base_normal";
+                }
+                else if (response.round.status == "wfwpc")
+                {
+                    pType = "base_win";
+                }
+                return pType;
             }
-            else if (response.round.status == "completed")
+            catch (Exception e)
             {
-                pType = "base_normal";
+                return pType;
             }
-            else if(response.round.status == "wfwpc")
-            {
-                pType = "base_win";
-            }
-            return pType;
         }
 
         private int GetTotalWin(Request request, Response response)
