@@ -60,7 +60,7 @@
             btn_Start.TabIndex = 2;
             btn_Start.Text = "Start";
             btn_Start.UseVisualStyleBackColor = true;
-            btn_Start.Click += this.btn_Start_Click;
+            btn_Start.Click += btn_Start_Click;
             // 
             // MainForm
             // 
@@ -71,6 +71,7 @@
             Controls.Add(btn_Open);
             Controls.Add(FileTextBox);
             Name = "MainForm";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Hacksaw Pattern Generator";
             ResumeLayout(false);
             PerformLayout();
