@@ -84,10 +84,19 @@ namespace InputPattern
                 
                 if (parsedEntry != null)
                 {
+                    try
+                    {
+                        var req = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
+                        var res = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
+                    }
+                    catch (Exception e)
+                    {
+                        continue;
+                    }
                     var request = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
                     var response = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
 
-                    if (response.accountBalance.balance == null)
+                    if (response == null || response.round == null || response.accountBalance == null || response.accountBalance.balance == null)
                     {
                         continue;
                     }
