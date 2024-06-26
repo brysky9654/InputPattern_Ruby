@@ -104,8 +104,9 @@ namespace InputPattern
                     string gameCode = fileName.Split('.')[0];
                     string gameName = fileName.Split('.')[1];
                     string pType = GetPType(request, response);
-                    string type = request.bets[0].buyBonus != null ? "free" : "base";
+                    string type = pType == "free" ? "free" : "base";
                     byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
+                    string idx = GetIdx(request, response);
                     int totalWin = GetTotalWin(request, response);
                     int win = totalWin;
                     int totalBet = int.Parse(request.bets[0].betAmount);
@@ -119,7 +120,7 @@ namespace InputPattern
                         pType = pType,
                         type = type,
                         gameDone = gameDone,
-                        idx = "",
+                        idx = idx,
                         small = 1,
                         win = win,
                         totalWin = totalWin,
@@ -227,23 +228,46 @@ namespace InputPattern
                     return "";
                 }
 
-                if (request.bets[0].buyBonus != null)
+                if (response.ToString().Contains("bonusfeaturewon"))
                 {
-                    pType = request.bets[0].buyBonus.ToString();
+                    pType = "free";
                 }
                 else if (response.round.status == "completed")
                 {
-                    pType = "base_normal";
+                    pType = "base-zero";
                 }
                 else if (response.round.status == "wfwpc")
                 {
-                    pType = "base_win";
+                    pType = "base-win";
                 }
                 return pType;
             }
             catch (Exception e)
             {
                 return pType;
+            }
+        }
+
+        private string GetIdx(Request request, Response response)
+        {
+            string idx = "";
+            try
+            {
+                if (response.round == null)
+                {
+                    return "";
+                }
+
+                if (request.bets[0].buyBonus != null)
+                {
+                    idx = request.bets[0].buyBonus.ToString();
+                }
+                
+                return idx;
+            }
+            catch (Exception e)
+            {
+                return idx;
             }
         }
 
@@ -272,7 +296,7 @@ namespace InputPattern
         private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and").Replace("boys™", "boys")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
