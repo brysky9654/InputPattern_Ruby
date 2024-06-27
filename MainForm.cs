@@ -16,7 +16,6 @@ namespace InputPattern
     {
         private List<string> filePaths;
         private List<string> fileNames;
-        private string hashCodesFilePath;
         private bool isFirstInsert;
 
         List<string> patternHashCodes;
@@ -42,7 +41,6 @@ namespace InputPattern
                     fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
                     FileTextBox.Text = string.Join("\r\n", fileNames);
                     string baseDirectory = Path.GetDirectoryName(filePaths[0]);
-                    hashCodesFilePath = Path.Combine(baseDirectory, @"..\..\HashCode") + "\\hashCodes.hc";   
                 }
             }
         }
