@@ -103,7 +103,7 @@ namespace InputPattern
 
                     string gameCode = fileName.Split('.')[0];
                     string gameName = fileName.Split('.')[1];
-                    string pType = GetPType(request, response);
+                    string pType = GetPType(response);
                     string type = pType == "free" ? "free" : "base";
                     byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
                     string idx = GetIdx(request, response);
@@ -218,7 +218,7 @@ namespace InputPattern
         }
 
     #region Assist_Functions
-        private string GetPType(Request request, Response response)
+        private string GetPType(Response response)
         {
             string pType = "";
             try
@@ -228,17 +228,25 @@ namespace InputPattern
                     return "";
                 }
 
-                if (response.ToString().Contains("bonusfeaturewon"))
+                foreach (var evnt in response.round.events)
                 {
-                    pType = "free";
-                }
-                else if (response.round.status == "completed")
-                {
-                    pType = "base-zero";
-                }
-                else if (response.round.status == "wfwpc")
-                {
-                    pType = "base-win";
+                    if(evnt.c.actions != null)
+                    {
+                        if (evnt.c.reelSet != "default")
+                        {
+                            pType = "free";
+                            break;
+                        }
+                        else
+                        {
+                            pType = "base-win";
+                        }
+                    }
+                    else if(pType == "")
+                    {
+                        pType = "base-zero";
+                        break;
+                    }
                 }
                 return pType;
             }
