@@ -28,21 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
-            FileTextBox = new TextBox();
             btn_Open = new Button();
             btn_Start = new Button();
+            fileList = new ListBox();
             SuspendLayout();
-            // 
-            // FileTextBox
-            // 
-            FileTextBox.Enabled = false;
-            FileTextBox.Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            FileTextBox.Location = new Point(40, 30);
-            FileTextBox.Multiline = true;
-            FileTextBox.Name = "FileTextBox";
-            FileTextBox.ScrollBars = ScrollBars.Both;
-            FileTextBox.Size = new Size(300, 350);
-            FileTextBox.TabIndex = 0;
             // 
             // btn_Open
             // 
@@ -64,25 +53,32 @@
             btn_Start.UseVisualStyleBackColor = true;
             btn_Start.Click += btn_Start_Click;
             // 
+            // fileList
+            // 
+            fileList.FormattingEnabled = true;
+            fileList.ItemHeight = 15;
+            fileList.Location = new Point(45, 30);
+            fileList.Name = "fileList";
+            fileList.Size = new Size(300, 349);
+            fileList.TabIndex = 3;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(384, 461);
+            Controls.Add(fileList);
             Controls.Add(btn_Start);
             Controls.Add(btn_Open);
-            Controls.Add(FileTextBox);
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Hacksaw Pattern Generator";
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
-
-        private TextBox FileTextBox;
         private Button btn_Open;
         private Button btn_Start;
+        private ListBox fileList;
     }
 }

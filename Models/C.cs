@@ -1,4 +1,4 @@
-﻿using System;
+﻿    using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,5 +12,7 @@ namespace InputPattern.Models
         public string reelSet { get; set; }
         public List<string> stops { get; set; }
         public string grid { get; set; }
+        public string bonusFeatureWon { get; set; }
+        public string bonusFeatureCount { get; set; }
     }
 }

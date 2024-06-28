@@ -39,8 +39,11 @@ namespace InputPattern
                 {
                     filePaths = openFileDialog.FileNames.ToList();
                     fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
-                    FileTextBox.Text = string.Join("\r\n", fileNames);
-                    string baseDirectory = Path.GetDirectoryName(filePaths[0]);
+                    
+                    foreach (var fileName in fileNames)
+                    {
+                        fileList.Items.Add(fileName);
+                    }
                 }
             }
         }
