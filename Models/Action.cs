@@ -9,6 +9,6 @@ namespace InputPattern.Models
     public class Action
     {
         public string at { get; set; }
-        public Data data { get; set; }
+        public Dictionary<string, object> data { get; set; }
     }
 }

@@ -129,8 +129,8 @@ namespace InputPattern
                         virtualBet = totalBet,
                         rtp = rtp,
                         balance = int.Parse(response.accountBalance.balance),
-                        //pattern = JsonConvert.SerializeObject(response.round),
-                        pattern = JsonConvert.SerializeObject(response.round.events),
+                        pattern = JsonConvert.SerializeObject(response.round),
+                        //pattern = JsonConvert.SerializeObject(response.round.events),
                         createdAt = response.serverTime,
                         updatedAt = response.serverTime
                     };
@@ -272,7 +272,6 @@ namespace InputPattern
                 {
                     idx = request.bets[0].buyBonus.ToString();
                 }
-                
                 return idx;
             }
             catch (Exception e)
@@ -306,7 +305,7 @@ namespace InputPattern
         private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and").Replace("boys™", "boys")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and").Replace("boysï¿½", "boys")}_hacksaw";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
