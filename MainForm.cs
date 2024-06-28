@@ -129,7 +129,8 @@ namespace InputPattern
                         virtualBet = totalBet,
                         rtp = rtp,
                         balance = int.Parse(response.accountBalance.balance),
-                        pattern = JsonConvert.SerializeObject(response.round),
+                        //pattern = JsonConvert.SerializeObject(response.round),
+                        pattern = JsonConvert.SerializeObject(response.round.events),
                         createdAt = response.serverTime,
                         updatedAt = response.serverTime
                     };
