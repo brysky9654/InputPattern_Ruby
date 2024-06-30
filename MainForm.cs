@@ -40,6 +40,7 @@ namespace InputPattern
                     filePaths = openFileDialog.FileNames.ToList();
                     fileNames = filePaths.Select(System.IO.Path.GetFileName).ToList();
                     
+                    fileList.Items.Clear();
                     foreach (var fileName in fileNames)
                     {
                         fileList.Items.Add(fileName);
@@ -55,7 +56,7 @@ namespace InputPattern
                 foreach (var filePath in filePaths)
                 {
                     string fileContent = File.ReadAllText(filePath);
-                    List<PatWantedDeadOrAWildHacksaw> records = ParseData(fileContent, System.IO.Path.GetFileName(filePath));
+                    List<HacksawPattern> records = ParseData(fileContent, System.IO.Path.GetFileName(filePath));
                     InsertDataIntoDatabase(records);
                 }
                 MessageBox.Show("Data inserted successfully!");
@@ -66,9 +67,9 @@ namespace InputPattern
             }
         }
 
-        private List<PatWantedDeadOrAWildHacksaw> ParseData(string data, string fileName)
+        private List<HacksawPattern> ParseData(string data, string fileName)
         {
-            var records = new List<PatWantedDeadOrAWildHacksaw>();
+            var records = new List<HacksawPattern>();
             var jsonEntries = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var parsedEntry = new Dictionary<string, string>();
 
@@ -106,7 +107,7 @@ namespace InputPattern
                     string gameName = fileName.Split('.')[1];
                     string pType = GetPType(response);
                     string type = pType == "free" ? "free" : "base";
-                    byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
+                    //byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
                     string idx = GetIdx(request, response);
                     int totalWin = GetTotalWin(request, response);
                     int win = totalWin;
@@ -114,13 +115,13 @@ namespace InputPattern
                     double rtpDouble = ((double)totalWin / totalBet) * 100;
                     int rtp = (int)rtpDouble;
 
-                    var record = new PatWantedDeadOrAWildHacksaw
+                    var record = new HacksawPattern
                     {
                         gameCode = gameCode,
                         gameName = gameName,
                         pType = pType,
                         type = type,
-                        gameDone = gameDone,
+                        gameDone = (byte)1,
                         idx = idx,
                         small = 1,
                         win = win,
@@ -142,7 +143,7 @@ namespace InputPattern
             return records;
         }
 
-        private void InsertDataIntoDatabase(List<PatWantedDeadOrAWildHacksaw> records)
+        private void InsertDataIntoDatabase(List<HacksawPattern> records)
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -150,7 +151,7 @@ namespace InputPattern
 
                 if (isFirstInsert)
                 {
-                    string getPatternsQuery = $"SELECT pattern FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
+                    string getPatternsQuery = $"SELECT pattern FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
 
                     using (SqlCommand command = new SqlCommand(getPatternsQuery, connection))
                     {
@@ -186,7 +187,7 @@ namespace InputPattern
                     }
 
                     string query = $@"
-                        INSERT INTO pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw 
+                        INSERT INTO pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")} 
                         (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
                         (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
@@ -230,27 +231,28 @@ namespace InputPattern
                     return "";
                 }
 
-                foreach (var evnt in response.round.events)
+                if(response.round.status == "completed")
                 {
-                    if(evnt.c.actions != null)
+                    pType = "base-zero";
+                    return pType;
+                }
+                else
+                {
+                    pType = "base-win";
+                    foreach (var evnt in response.round.events)
                     {
-                        if (evnt.c.reelSet != "default")
+                        if (evnt.etn == "feature_enter")
                         {
                             pType = "free";
                             break;
                         }
                         else
                         {
-                            pType = "base-win";
+                            continue;
                         }
                     }
-                    else if(pType == "")
-                    {
-                        pType = "base-zero";
-                        break;
-                    }
+                    return pType;
                 }
-                return pType;
             }
             catch (Exception e)
             {
@@ -302,10 +304,10 @@ namespace InputPattern
             return pattern.GetHashCode().ToString();
         }
 
-        private int GetLastId(PatWantedDeadOrAWildHacksaw record, string connectionString)
+        private int GetLastId(HacksawPattern record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and").Replace("boys�", "boys")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_").Replace("boys�", "boys")}";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -320,10 +322,10 @@ namespace InputPattern
             return lastId;
         }
 
-        private int GetLastBig(PatWantedDeadOrAWildHacksaw record, string connectionString)
+        private int GetLastBig(HacksawPattern record, string connectionString)
         {
             int lastBig = 0;
-            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("&", "and")}_hacksaw";
+            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -340,7 +342,7 @@ namespace InputPattern
     #endregion
     }
 
-    public class PatWantedDeadOrAWildHacksaw
+    public class HacksawPattern
     {
         public int id { get; set; }
         public string gameCode { get; set; }
