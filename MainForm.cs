@@ -105,7 +105,7 @@ namespace InputPattern
 
                     string gameCode = fileName.Split('.')[0];
                     string gameName = fileName.Split('.')[1];
-                    string pType = GetPType(response);
+                    string pType = GetPType(request, response);
                     string type = pType == "free" ? "free" : "base";
                     //byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
                     string idx = GetIdx(request, response);
@@ -130,7 +130,7 @@ namespace InputPattern
                         virtualBet = totalBet,
                         rtp = rtp,
                         balance = int.Parse(response.accountBalance.balance),
-                        pattern = JsonConvert.SerializeObject(response.round),
+                        pattern = JsonConvert.SerializeObject(response.round.events),
                         //pattern = JsonConvert.SerializeObject(response.round.events),
                         createdAt = response.serverTime,
                         updatedAt = response.serverTime
@@ -149,9 +149,39 @@ namespace InputPattern
             {
                 connection.Open();
 
+                string sanitizedTableName = $"pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
+                string checkTableQuery = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'pattern' AND TABLE_NAME = '{sanitizedTableName}') " +
+                                         $"BEGIN " +
+                                         $"CREATE TABLE pattern.{sanitizedTableName} " +
+                                         $"( " +
+                                         $"id INT PRIMARY KEY, " +
+                                         $"gameCode NVARCHAR(50), " +
+                                         $"pType NVARCHAR(30), " +
+                                         $"type NVARCHAR(30), " +
+                                         $"gameDone TINYINT, " +
+                                         $"idx NVARCHAR(22), " +
+                                         $"big INT, " +
+                                         $"small INT, " +
+                                         $"win INT, " +
+                                         $"totalWin INT, " +
+                                         $"totalBet INT, " +
+                                         $"virtualBet INT, " +
+                                         $"rtp INT, " +
+                                         $"balance NVARCHAR(100), " +
+                                         $"pattern NVARCHAR(MAX), " +
+                                         $"createdAt DATETIME, " +
+                                         $"updatedAt DATETIME " +
+                                         $") " +
+                                         $"END";
+
+                using (SqlCommand checkTableCommand = new SqlCommand(checkTableQuery, connection))
+                {
+                    checkTableCommand.ExecuteNonQuery();
+                }
+
                 if (isFirstInsert)
                 {
-                    string getPatternsQuery = $"SELECT pattern FROM pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
+                    string getPatternsQuery = $"SELECT pattern FROM pattern.{sanitizedTableName}";
 
                     using (SqlCommand command = new SqlCommand(getPatternsQuery, connection))
                     {
@@ -169,7 +199,6 @@ namespace InputPattern
                             }
                         }
                     }
-
                     isFirstInsert = false;
                 }
 
@@ -182,7 +211,6 @@ namespace InputPattern
                     // Check if hash code already exists in the hash codes file
                     if (patternHashCodes.Contains(eventHashCode))
                     {
-                        // Skip insertion if record with same eventHashCode exists
                         continue;
                     }
 
@@ -221,7 +249,7 @@ namespace InputPattern
         }
 
     #region Assist_Functions
-        private string GetPType(Response response)
+        private string GetPType(Request request, Response response)
         {
             string pType = "";
             try
@@ -241,7 +269,7 @@ namespace InputPattern
                     pType = "base-win";
                     foreach (var evnt in response.round.events)
                     {
-                        if (evnt.etn == "feature_enter")
+                        if (evnt.etn == "feature_enter" || request.bets[0].buyBonus != null)
                         {
                             pType = "free";
                             break;
@@ -284,16 +312,7 @@ namespace InputPattern
 
         private int GetTotalWin(Request request, Response response)
         {
-            int totalWin = 0;
-
-            if (request.bets.ElementAt<Bet>(0).buyBonus != null)
-            {
-                totalWin = int.Parse(response.round.events.Last<Event>().awa);
-            }
-            else
-            {
-                totalWin = int.Parse(response.round.events.First<Event>().awa);
-            };
+            int totalWin = int.Parse(response.round.events.Last<Event>().awa);
 
             return totalWin;
         }
