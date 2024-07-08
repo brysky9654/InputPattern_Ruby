@@ -9,6 +9,9 @@ using InputPattern.Models;
 using Azure.Identity;
 using System.IO;
 using Microsoft.Web.WebView2.Core;
+using Newtonsoft.Json.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace InputPattern
 {
@@ -20,7 +23,7 @@ namespace InputPattern
 
         List<string> patternHashCodes;
 
-        private string connectionString = "Server=localhost;Database=Slot_Hacksaw;persist security info=True;MultipleActiveResultSets=True;User ID=sa;Password=sqlpassword123!@#;TrustServerCertificate=True";
+        private string connectionString = "Server=localhost;Database=Slot_AvatarUX;persist security info=True;MultipleActiveResultSets=True;User ID=sa;Password=sqlpassword123!@#;TrustServerCertificate=True";
 
         public MainForm()
         {
@@ -49,15 +52,15 @@ namespace InputPattern
             }
         }
 
-        private void btn_Start_Click(object sender, EventArgs e)
+        private async void btn_Start_Click(object sender, EventArgs e)
         {
             if (filePaths != null && filePaths.Count > 0)
             {
                 foreach (var filePath in filePaths)
                 {
-                    string fileContent = File.ReadAllText(filePath);
-                    List<HacksawPattern> records = ParseData(fileContent, System.IO.Path.GetFileName(filePath));
-                    InsertDataIntoDatabase(records);
+                    var fileContent = await File.ReadAllTextAsync(filePath);
+                    ParseData(fileContent);
+                    //InsertDataIntoDatabase(records);
                 }
                 MessageBox.Show("Data inserted successfully!");
             }
@@ -67,89 +70,89 @@ namespace InputPattern
             }
         }
 
-        private List<HacksawPattern> ParseData(string data, string fileName)
+        private void ParseData(string fileContent)
         {
-            var records = new List<HacksawPattern>();
-            var jsonEntries = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            var parsedEntry = new Dictionary<string, string>();
+            var records = new List<Pattern>();
+            //var jsonEntries = JsonConvert.DeserializeObject<JObject>(fileContent);
+            var stringEntries = fileContent.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var jsonEntries = new List<JObject>();
+            foreach (var stringEntry in stringEntries)
+            {
+                var jsonEntry = JObject.Parse(stringEntry);
+                jsonEntries.Add(jsonEntry);
+            }
 
             foreach (var entry in jsonEntries)
             {
                 try
                 {
-                    parsedEntry = JsonConvert.DeserializeObject<Dictionary<string, string>>(entry);
+                    var request = JsonConvert.DeserializeObject<JObject>((string)entry["Request"]);
+                    var response = JsonConvert.DeserializeObject<JObject>((string)entry["Response"]);
+
+                    if (!response.ContainsKey("roundId") || JsonConvert.SerializeObject(response["wager"]["next"]) == "null")
+                    {
+                        if (request["action"] != null)
+                        {
+                            string action = (string)request["action"];
+
+                            string gameCode = (string)request["game"];
+                            // byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
+                            string idx = action == "main" ? "" : action;
+                            int totalWin = (int)((double)response["wager"]["win"] * 100);
+                            int win = totalWin;
+                            string pType = action == "main" ? (win == 0 ? "base-zero" : "base-win") : "free";
+                            string type = pType == "free" ? "free" : "base";
+                            int totalBet = (int)((double)response["wager"]["state"]["bet"] * 100);
+                            double rtpDouble = ((double)totalWin / totalBet) * 100;
+                            int rtp = (int)rtpDouble;
+
+                            var record = new Pattern
+                            {
+                                gameCode = gameCode,
+                                pType = pType,
+                                type = type,
+                                gameDone = (byte)0,
+                                idx = idx,
+                                small = 1,
+                                win = win,
+                                totalWin = totalWin,
+                                totalBet = totalBet,
+                                virtualBet = totalBet,
+                                rtp = rtp,
+                                balance = 0,
+                                pattern = JsonConvert.SerializeObject(response["wager"]["data"]),
+                                createdAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssZ")),
+                                updatedAt = DateTime.Parse(DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                            };
+                            records.Add(record);
+                        }
+                        else if (request["action"] == null)
+                        {
+                            string gameCode = (string)request["game"];
+                            string roundId = (string)request["roundId"];
+                            int balance = (int)((double)response["balance"] * 100);
+                            
+                            records.Last().balance= balance;
+                            records.Last().gameDone = (byte)1;
+                        }
+                    }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
                     continue;
                 }
-                
-                if (parsedEntry != null)
-                {
-                    try
-                    {
-                        var req = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
-                        var res = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
-                    }
-                    catch (Exception e)
-                    {
-                        continue;
-                    }
-                    var request = JsonConvert.DeserializeObject<Request>(parsedEntry["Request"]);
-                    var response = JsonConvert.DeserializeObject<Response>(parsedEntry["Response"]);
-
-                    if (response == null || response.round == null || response.accountBalance == null || response.accountBalance.balance == null)
-                    {
-                        continue;
-                    }
-
-                    string gameCode = fileName.Split('.')[0];
-                    string gameName = fileName.Split('.')[1];
-                    string pType = GetPType(request, response);
-                    string type = pType == "free" ? "free" : "base";
-                    //byte gameDone = (byte)(response.round.status == "completed" ? 0 : 1);
-                    string idx = GetIdx(request, response);
-                    int totalWin = GetTotalWin(request, response);
-                    int win = totalWin;
-                    int totalBet = int.Parse(request.bets[0].betAmount);
-                    double rtpDouble = ((double)totalWin / totalBet) * 100;
-                    int rtp = (int)rtpDouble;
-
-                    var record = new HacksawPattern
-                    {
-                        gameCode = gameCode,
-                        gameName = gameName,
-                        pType = pType,
-                        type = type,
-                        gameDone = (byte)1,
-                        idx = idx,
-                        small = 1,
-                        win = win,
-                        totalWin = totalWin,
-                        totalBet = totalBet,
-                        virtualBet = totalBet,
-                        rtp = rtp,
-                        balance = int.Parse(response.accountBalance.balance),
-                        pattern = JsonConvert.SerializeObject(response.round.events),
-                        //pattern = JsonConvert.SerializeObject(response.round.events),
-                        createdAt = response.serverTime,
-                        updatedAt = response.serverTime
-                    };
-
-                    records.Add(record);
-                }
             }
 
-            return records;
+            InsertDataIntoDatabase(records);
         }
 
-        private void InsertDataIntoDatabase(List<HacksawPattern> records)
+        private void InsertDataIntoDatabase(List<Pattern> records)
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
 
-                string sanitizedTableName = $"pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
+                string sanitizedTableName = $"pat_{records[0].gameCode.Replace("-", "_")}";
                 string checkTableQuery = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'pattern' AND TABLE_NAME = '{sanitizedTableName}') " +
                                          $"BEGIN " +
                                          $"CREATE TABLE pattern.{sanitizedTableName} " +
@@ -215,7 +218,7 @@ namespace InputPattern
                     }
 
                     string query = $@"
-                        INSERT INTO pattern.pat_{records[0].gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")} 
+                        INSERT INTO pattern.{sanitizedTableName} 
                         (id, gameCode, pType, type, gameDone, idx, big, small, win, totalWin, totalBet, virtualBet, rtp, balance, pattern, createdAt, updatedAt)
                         VALUES
                         (@id, @gameCode, @pType, @type, @gameDone, @idx, @big, @small, @win, @totalWin, @totalBet, @virtualBet, @rtp, @balance, @pattern, @createdAt, @updatedAt)";
@@ -248,74 +251,99 @@ namespace InputPattern
             }
         }
 
+        private void UpdateBalance(string gameCode, string roundId, int balance)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string tableName = $"pat_{gameCode.Replace("-", "_")}";
+                string query = $@"
+                    USE Slot_AvatarUX;
+                    UPDATE pattern.{tableName}
+                    SET balance = {balance},
+                        gameDone = 1
+                    WHERE pattern LIKE '%' + {roundId} + '%'
+                      AND gameDone = 0
+                      AND balance = 0;";
+
+                using (SqlCommand checkTableCommand = new SqlCommand(query, connection))
+                {
+                    checkTableCommand.ExecuteNonQuery();
+                }
+            }
+        }
+
     #region Assist_Functions
-        private string GetPType(Request request, Response response)
-        {
-            string pType = "";
-            try
-            {
-                if (response.round == null)
-                {
-                    return "";
-                }
+        //private string GetPType(JToken request, JToken response)
+        //{
+        //    string pType = "";
+        //    try
+        //    {
+        //        if (response["round"] == null)
+        //        {
+        //            return "";
+        //        }
 
-                if(response.round.status == "completed")
-                {
-                    pType = "base-zero";
-                    return pType;
-                }
-                else
-                {
-                    pType = "base-win";
-                    foreach (var evnt in response.round.events)
-                    {
-                        if (evnt.etn == "feature_enter" || request.bets[0].buyBonus != null)
-                        {
-                            pType = "free";
-                            break;
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-                    return pType;
-                }
-            }
-            catch (Exception e)
-            {
-                return pType;
-            }
-        }
+        //        if(response.round.status == "completed")
+        //        {
+        //            pType = "base-zero";
+        //            return pType;
+        //        }
+        //        else
+        //        {
+        //            pType = "base-win";
+        //            foreach (var evnt in response.round.events)
+        //            {
+        //                if (evnt.etn == "feature_enter" || request.bets[0].buyBonus != null)
+        //                {
+        //                    pType = "free";
+        //                    break;
+        //                }
+        //                else
+        //                {
+        //                    continue;
+        //                }
+        //            }
+        //            return pType;
+        //        }
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        return pType;
+        //    }
+        //}
 
-        private string GetIdx(Request request, Response response)
-        {
-            string idx = "";
-            try
-            {
-                if (response.round == null)
-                {
-                    return "";
-                }
+        //private string GetIdx(JToken request, JToken response)
+        //{
+        //    string idx = "";
+        //    try
+        //    {
+        //        if (request["bet"] != null || request["action"] == null || response["wager"]["next"] != null)
+        //        {
+        //            return "";
+        //        }
 
-                if (request.bets[0].buyBonus != null)
-                {
-                    idx = request.bets[0].buyBonus.ToString();
-                }
-                return idx;
-            }
-            catch (Exception e)
-            {
-                return idx;
-            }
-        }
+        //        if ((string)request["action"] == "main")
+        //        {
+        //            idx = "base";
+        //        }
+        //        else idx = "free";
+        //        return idx;
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        return idx;
+        //    }
+        //}
 
-        private int GetTotalWin(Request request, Response response)
-        {
-            int totalWin = int.Parse(response.round.events.Last<Event>().awa);
+        //private int GetTotalWin(Request request, Response response)
+        //{
 
-            return totalWin;
-        }
+        //    int totalWin = int.Parse(response.round.events.Last<Event>().awa);
+
+        //    return totalWin;
+        //}
 
         private string CalculateEventHashCodeFromPattern(string pattern)
         {
@@ -323,10 +351,10 @@ namespace InputPattern
             return pattern.GetHashCode().ToString();
         }
 
-        private int GetLastId(HacksawPattern record, string connectionString)
+        private int GetLastId(Pattern record, string connectionString)
         {
             int lastId = 0;
-            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_").Replace("boys�", "boys")}";
+            string query = $"SELECT ISNULL(MAX(id), 0) FROM pattern.pat_{record.gameCode.Replace("-", "_")}";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -341,10 +369,10 @@ namespace InputPattern
             return lastId;
         }
 
-        private int GetLastBig(HacksawPattern record, string connectionString)
+        private int GetLastBig(Pattern record, string connectionString)
         {
             int lastBig = 0;
-            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameName.ToLower().Replace("'", "").Replace("!", "").Replace("_&_", "_")}";
+            string query = $"SELECT ISNULL(MAX(big), 0) FROM pattern.pat_{record.gameCode.Replace("-", "_")}";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -361,11 +389,10 @@ namespace InputPattern
     #endregion
     }
 
-    public class HacksawPattern
+    public class Pattern
     {
         public int id { get; set; }
         public string gameCode { get; set; }
-        public string gameName { get; set; }
         public string pType { get; set; }
         public string type { get; set; }
         public byte gameDone { get; set; }

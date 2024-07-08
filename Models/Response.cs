@@ -8,17 +8,16 @@ namespace InputPattern.Models
 {
     public class Response
     {
-        public Round round { get; set; }
-        public bool promotionNoLongerAvailable { get; set; }
-        public object promotionWin { get; set; }
-        public object offer { get; set; }
-        public object freeRoundOffer { get; set; }
-        public int statusCode { get; set; }
-        public string statusMessage { get; set; }
-        public AccountBalance accountBalance { get; set; }
-        public object statusData { get; set; }
-        public object dialog { get; set; }
-        public object customData { get; set; }
-        public DateTime serverTime { get; set; }
+        public string roundId { get; set; }
+        public Wager wager { get; set; }
+        public float balance { get; set; }
+    }
+
+    public class Wager
+    {
+        public float win { get; set; }
+        public Dictionary<string, object> state { get; set; }
+        public List<Dictionary<string, object>> data { get; set; }
+        public List<string> next { get; set; }
     }
 }

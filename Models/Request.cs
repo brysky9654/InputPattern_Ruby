@@ -8,11 +8,10 @@ namespace InputPattern.Models
 {
     public class Request
     {
-        public bool autoplay { get; set; }
-        public List<Bet> bets { get; set; }
-        public object offerId { get; set; }
-        public object promotionId { get; set; }
-        public int seq { get; set; }
-        public string sessionUuid { get; set; }
+        public string game { get; set; }
+        public string provider { get; set; }
+        public string action { get; set; }
+        public int bet { get; set; }
+        public string roundId { get; set; }
     }
 }
