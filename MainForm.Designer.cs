@@ -72,7 +72,7 @@
             Controls.Add(btn_Open);
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Hacksaw Pattern Generator";
+            Text = "3 Oaks Pattern Writer";
             ResumeLayout(false);
         }
 

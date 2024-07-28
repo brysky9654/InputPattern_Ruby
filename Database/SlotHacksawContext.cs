@@ -35,10 +35,6 @@ public partial class SlotHacksawContext : DbContext
 
     public virtual DbSet<Game> Games { get; set; }
 
-    public virtual DbSet<PatCruiseRoyale> PatCruiseRoyales { get; set; }
-
-    public virtual DbSet<PatWantedDeadOrAWildHacksaw> PatWantedDeadOrAWildHacksaws { get; set; }
-
     public virtual DbSet<Player> Players { get; set; }
 
     public virtual DbSet<SessionKey> SessionKeys { get; set; }
@@ -227,90 +223,6 @@ public partial class SlotHacksawContext : DbContext
             entity.Property(e => e.Thumbnail).HasDefaultValue("");
             entity.Property(e => e.Type).HasComment("/// 0: blocked\r\n/// 1: normal\r\n/// 2: special\r\n/// 3: option");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
-        });
-
-        modelBuilder.Entity<PatCruiseRoyale>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__pat_crui__3213E83FE26F73A3");
-
-            entity.ToTable("pat_cruise_royale", "pattern");
-
-            entity.Property(e => e.Id)
-                .ValueGeneratedNever()
-                .HasColumnName("id");
-            entity.Property(e => e.Balance)
-                .HasMaxLength(100)
-                .HasColumnName("balance");
-            entity.Property(e => e.Big).HasColumnName("big");
-            entity.Property(e => e.CreatedAt).HasColumnName("createdAt");
-            entity.Property(e => e.GameCode)
-                .HasMaxLength(50)
-                .HasColumnName("gameCode");
-            entity.Property(e => e.GameDone)
-                .HasComment("If Free, Bonus true")
-                .HasColumnName("gameDone");
-            entity.Property(e => e.Idx)
-                .HasMaxLength(22)
-                .HasComment("pur, fsp, ind")
-                .HasColumnName("idx");
-            entity.Property(e => e.PType)
-                .HasMaxLength(30)
-                .HasColumnName("pType");
-            entity.Property(e => e.Pattern).HasColumnName("pattern");
-            entity.Property(e => e.Rtp).HasColumnName("rtp");
-            entity.Property(e => e.Small).HasColumnName("small");
-            entity.Property(e => e.TotalBet).HasColumnName("totalBet");
-            entity.Property(e => e.TotalWin).HasColumnName("totalWin");
-            entity.Property(e => e.Type)
-                .HasMaxLength(30)
-                .HasColumnName("type");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updatedAt");
-            entity.Property(e => e.VirtualBet)
-                .HasComment("Previous bets stored to calculate multi in freepattern")
-                .HasColumnName("virtualBet");
-            entity.Property(e => e.Win).HasColumnName("win");
-        });
-
-        modelBuilder.Entity<PatWantedDeadOrAWildHacksaw>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__pat_crui__3213E83F9869FD25");
-
-            entity.ToTable("pat_wanted_dead_or_a_wild_hacksaw", "pattern");
-
-            entity.Property(e => e.Id)
-                .ValueGeneratedNever()
-                .HasColumnName("id");
-            entity.Property(e => e.Balance)
-                .HasMaxLength(100)
-                .HasColumnName("balance");
-            entity.Property(e => e.Big).HasColumnName("big");
-            entity.Property(e => e.CreatedAt).HasColumnName("createdAt");
-            entity.Property(e => e.GameCode)
-                .HasMaxLength(50)
-                .HasColumnName("gameCode");
-            entity.Property(e => e.GameDone)
-                .HasComment("If Free, Bonus true")
-                .HasColumnName("gameDone");
-            entity.Property(e => e.Idx)
-                .HasMaxLength(22)
-                .HasComment("pur, fsp, ind")
-                .HasColumnName("idx");
-            entity.Property(e => e.PType)
-                .HasMaxLength(30)
-                .HasColumnName("pType");
-            entity.Property(e => e.Pattern).HasColumnName("pattern");
-            entity.Property(e => e.Rtp).HasColumnName("rtp");
-            entity.Property(e => e.Small).HasColumnName("small");
-            entity.Property(e => e.TotalBet).HasColumnName("totalBet");
-            entity.Property(e => e.TotalWin).HasColumnName("totalWin");
-            entity.Property(e => e.Type)
-                .HasMaxLength(30)
-                .HasColumnName("type");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updatedAt");
-            entity.Property(e => e.VirtualBet)
-                .HasComment("Previous bets stored to calculate multi in freepattern")
-                .HasColumnName("virtualBet");
-            entity.Property(e => e.Win).HasColumnName("win");
         });
 
         modelBuilder.Entity<Player>(entity =>
